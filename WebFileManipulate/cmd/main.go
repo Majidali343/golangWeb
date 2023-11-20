@@ -1,7 +1,13 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
+
+	"time"
+	"wordcount/internal/calculation"
+	"wordcount/internal/file"
+	"wordcount/pkg/counting"
 
 	"github.com/gin-gonic/gin"
 )
@@ -14,61 +20,63 @@ type filedata struct {
 func filemanupulate() {
 	router := gin.Default()
 
-	router.GET("/", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{
-			"message": "Hello, Gin!",
-		})
-	})
+	var TotalCalculation calculation.Calculation
+	var ElapsedTime int64
 
-	router.POST("/file", func(c *gin.Context) {
-		var requestBody filedata
+	router.POST("/filemanipulate", func(c *gin.Context) {
+		var filedata filedata
 
-		if err := c.ShouldBindJSON(&requestBody); err != nil {
+		if err := c.ShouldBindJSON(&filedata); err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}
 
-		// startTime := time.Now()
+		startTime := time.Now()
 
-		// data, err := file.ReadFile("../assets/" + filedata.FileName)
-		// if err != nil {
-		// 	fmt.Println("Error reading file:", err)
-		// 	return
-		// }
+		data, err := file.ReadFile("../assets/" + filedata.FileName)
+		if err != nil {
+			fmt.Println("Error reading file:", err)
+			return
+		}
 
-		// segmentSize := len(data) / filedata.Routines
+		segmentSize := len(data) / filedata.Routines
 
-		// doneCh := make(chan struct{})
+		doneCh := make(chan struct{})
 
-		// partialResultCh := make(chan calculation.Calculation)
+		partialResultCh := make(chan calculation.Calculation)
 
-		// go func() {
-		// 	var totalCalculation calculation.Calculation
+		go func() {
 
-		// 	for i := 0; i < requestBody.Routines; i++ {
-		// 		partialResult := <-partialResultCh
-		// 		totalCalculation.PunctuationCount += partialResult.PunctuationCount
-		// 		totalCalculation.VowelCount += partialResult.VowelCount
-		// 		totalCalculation.WordCount += partialResult.WordCount
-		// 		totalCalculation.LineCount += partialResult.LineCount
-		// 	}
+			for i := 0; i < filedata.Routines; i++ {
+				partialResult := <-partialResultCh
+				TotalCalculation.PunctuationCount += partialResult.PunctuationCount
+				TotalCalculation.VowelCount += partialResult.VowelCount
+				TotalCalculation.WordCount += partialResult.WordCount
+				TotalCalculation.LineCount += partialResult.LineCount
+			}
 
-		// 	fmt.Printf("Total details are %+v \n", totalCalculation)
+			// fmt.Printf("Total details are %+v \n", TotalCalculation)
 
-		// 	close(doneCh)
-		// }()
+			close(doneCh)
+		}()
 
-		// for i := 0; i < filedata.Routines; i++ {
-		// 	go counting.Count(data[i*segmentSize:(i+1)*segmentSize], partialResultCh, doneCh)
-		// }
+		for i := 0; i < filedata.Routines; i++ {
+			go counting.Count(data[i*segmentSize:(i+1)*segmentSize], partialResultCh, doneCh)
+		}
 
-		// <-doneCh
+		<-doneCh
 
-		// endTime := time.Now()
-		// elapsedTime := endTime.Sub(startTime).Milliseconds()
-		// fmt.Printf("Elapsed time: %d ms\n", elapsedTime)
+		endTime := time.Now()
+		ElapsedTime = endTime.Sub(startTime).Milliseconds()
 
-		c.JSON(http.StatusOK, gin.H{"filedata": requestBody})
+		c.JSON(http.StatusOK, gin.H{"filedata": TotalCalculation})
+	})
+
+	router.GET("/", func(c *gin.Context) {
+		c.JSON(http.StatusOK, gin.H{
+			"Calculation": TotalCalculation,
+			"Time":        ElapsedTime,
+		})
 	})
 
 	// Start the Gin server

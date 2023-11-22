@@ -7,7 +7,7 @@ import (
 )
 
 func main() {
-	
+
 	router := SetupRouter()
 	router.Run(":8080")
 }

@@ -5,7 +5,7 @@ import (
 	"mime/multipart"
 	"net/http"
 
-	"github.com/dgrijalva/jwt-go"
+	
 
 	"path/filepath"
 	"strconv"
@@ -29,22 +29,6 @@ var ElapsedTime int64
 
 func Filemanupulate(c *gin.Context) {
 	var filedata filedata
-
-	tokenString := c.GetHeader("Authorization")
-
-	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-		// Check the signing method
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
-		}
-		// Return the secret key
-		return []byte(SecretKey), nil
-	})
-
-	if err != nil || !token.Valid {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Unauthorized"})
-		return
-	}
 
 	routines := c.PostForm("routines")
 	routinesInt, err := strconv.Atoi(routines)

@@ -18,32 +18,45 @@ type User struct {
 	gorm.Model
 	Email    string `json:"email" gorm:"not null;unique"`
 	Password string `json:"password" gorm:"not null"`
-	// Add other fields as needed
 }
 
 type MyUser struct {
 	Email    string `json:"email" `
 	Password string `json:"password"`
-	// Add other fields as needed
 }
 
-func Register(c *gin.Context) {
+type logeduser struct {
+	LoggedUserID uint   `json:"loggeduserid"`
+	Adminemail   string `json:"email" `
+}
 
+var LogedUser logeduser
+
+func Register(c *gin.Context) {
 	var user MyUser
+
+	// Parse JSON request into MyUser struct
 	if err := c.BindJSON(&user); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	var dbuser User
-	dbuser.Email = user.Email
-	dbuser.Password = user.Password
-
+	// Connect to the database
 	db := dbconnect.Dbconnection()
-	db.AutoMigrate(&User{})
 	defer db.Close()
+
+	var existingUser User
+	if err := db.Where("email = ?", user.Email).First(&existingUser).Error; err == nil {
+		// User already exists
+		c.JSON(http.StatusConflict, gin.H{"error": "User with this email already exists"})
+		return
+	}
 	// Create a new user in the database
-	if err := db.Create(&dbuser).Error; err != nil {
+	var newUser User
+	newUser.Email = user.Email
+	newUser.Password = user.Password
+
+	if err := db.Create(&newUser).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to register user", "details": err.Error()})
 		return
 	}
@@ -52,7 +65,6 @@ func Register(c *gin.Context) {
 }
 
 func Login(c *gin.Context) {
-
 	var user MyUser
 
 	if err := c.BindJSON(&user); err != nil {
@@ -60,21 +72,38 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	if user.Email == "majid" && user.Password == "12345" {
-		// Create a token
-		token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-			"Email": user.Email,
-			"exp":   time.Now().Add(time.Hour * 24).Unix(),
-		})
+	var dbUser User
 
-		tokenString, err := token.SignedString([]byte(SecretKey))
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error signing the token"})
-			return
-		}
+	// Connect to the database
+	db := dbconnect.Dbconnection()
+	defer db.Close()
 
-		c.JSON(http.StatusOK, gin.H{"token": tokenString})
-	} else {
+	// Check if the user with the provided email exists
+	if err := db.Where("email = ?", user.Email).First(&dbUser).Error; err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
+		return
 	}
+
+	// Verify the password
+	if dbUser.Password != user.Password {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
+		return
+	}
+
+	// Create a token
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"Email": user.Email,
+		"exp":   time.Now().Add(time.Hour * 24).Unix(),
+	})
+
+	tokenString, err := token.SignedString([]byte(SecretKey))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error signing the token"})
+		return
+	}
+
+	LogedUser.LoggedUserID = dbUser.ID
+
+	// Respond with user ID and token
+	c.JSON(http.StatusOK, gin.H{"user_id": dbUser.ID, "token": tokenString})
 }

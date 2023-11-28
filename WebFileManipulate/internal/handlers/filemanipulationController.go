@@ -2,19 +2,20 @@ package filemanipulate
 
 import (
 	"fmt"
+
 	"mime/multipart"
 	"net/http"
-
-	
 
 	"path/filepath"
 	"strconv"
 	"time"
 	"wordcount/internal/calculation"
+	dbconnect "wordcount/internal/db"
 	"wordcount/internal/filereader"
 	"wordcount/pkg/counting"
 
 	"github.com/gin-gonic/gin"
+	"github.com/jinzhu/gorm"
 )
 
 type filedata struct {
@@ -22,7 +23,12 @@ type filedata struct {
 	file     *multipart.FileHeader `form:"file"  binding:"required"`
 }
 
-
+type Filestatic struct {
+	gorm.Model
+	UserID   uint   `json:"user_id"`
+	Filename string `json:"filename"`
+	Time     int64  `json:"time"`
+}
 
 var TotalCalculation calculation.Calculation
 var ElapsedTime int64
@@ -101,7 +107,94 @@ func Filemanupulate(c *gin.Context) {
 	endTime := time.Now()
 	ElapsedTime = endTime.Sub(startTime).Milliseconds()
 
-	c.JSON(http.StatusOK, gin.H{"filedata": TotalCalculation})
+	db := dbconnect.Dbconnection()
+	defer db.Close()
+
+	Logeduserdetail := LogedUser.LoggedUserID
+
+	var filestatic Filestatic
+	filestatic.UserID = Logeduserdetail
+	filestatic.Filename = filename
+	filestatic.Time = ElapsedTime
+
+	db.AutoMigrate(&Filestatic{})
+
+	if err := db.Create(&filestatic).Error; err != nil {
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"filedata": TotalCalculation, "Time": ElapsedTime, "logeduser": Logeduserdetail, "filename": filename})
+}
+
+var results []struct {
+	Filename string  `json:"filename"`
+	AvgTime  float64 `json:"avg_time"`
+	Count    int64   `json:"count"`
+}
+
+func UserFileStatics(c *gin.Context) {
+
+	db := dbconnect.Dbconnection()
+	Logeduserdetail := LogedUser.LoggedUserID
+
+	db.Table("filestatics").
+		Select("filename, AVG(time) as avg_time, COUNT(*) as count").
+		Where("user_id = ?", Logeduserdetail).
+		Group("filename").
+		Scan(&results)
+
+	for _, result := range results {
+
+		c.IndentedJSON(http.StatusOK, gin.H{
+			"User ID":           Logeduserdetail,
+			"Filename":          result.Filename,
+			"File Average Time": result.AvgTime,
+			"Counts":            result.Count,
+		})
+
+	}
+
+}
+
+func Admingetresults(c *gin.Context) {
+
+	var results []struct {
+		UserID   uint    `json:"user_id"`
+		Filename string  `json:"filename"`
+		AvgTime  float64 `json:"avg_time"`
+		Count    int64   `json:"count"`
+	}
+
+	validadminaccess := LogedUser.Adminemail
+
+	if validadminaccess != "" && validadminaccess == "admin@gmail.com" {
+
+		db := dbconnect.Dbconnection()
+
+		db.Table("filestatics").
+			Select("user_id, filename, AVG(time) as avg_time, COUNT(*) as count").
+			Group("user_id, filename").
+			Scan(&results)
+
+		for _, result := range results {
+
+			c.IndentedJSON(http.StatusOK, gin.H{
+				"Filename":          result.Filename,
+				"File Average Time": result.AvgTime,
+				"Counts":            result.Count,
+				"User ID":           result.UserID,
+			})
+
+		}
+
+	} else {
+
+		c.JSON(http.StatusOK, gin.H{
+			"Access error": "You can not access data you are a user ",
+			"email":        validadminaccess,
+		})
+	}
+
 }
 
 func Details(c *gin.Context) {

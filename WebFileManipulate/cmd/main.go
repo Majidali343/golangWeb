@@ -4,6 +4,8 @@ import (
 	middleware "wordcount/internal/Middleware"
 	filemanipulateController "wordcount/internal/handlers"
 
+	tokens "wordcount/internal/Middleware"
+
 	"github.com/gin-gonic/gin"
 	_ "github.com/jinzhu/gorm/dialects/postgres"
 )
@@ -20,6 +22,10 @@ func SetupRouter() *gin.Engine {
 	r.POST("/login", filemanipulateController.Login)
 	r.POST("/admin", filemanipulateController.Adminlogin)
 	r.POST("/register", filemanipulateController.Register)
+
+	// Endpoint for token refresh
+	r.POST("/refresh", tokens.RefreshTokenHandler)
+
 	r.POST("/filemanipulate", middleware.AuthMiddleware(), filemanipulateController.Filemanupulate)
 	r.GET("/UserFileStatics", middleware.AuthMiddleware(), filemanipulateController.UserFileStatics)
 	r.GET("/Admingetresults", middleware.AuthMiddleware(), filemanipulateController.Admingetresults)

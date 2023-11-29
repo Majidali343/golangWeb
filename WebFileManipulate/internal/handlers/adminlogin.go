@@ -2,11 +2,11 @@ package filemanipulate
 
 import (
 	"net/http"
-	"time"
 
-	"github.com/dgrijalva/jwt-go"
 	"github.com/gin-gonic/gin"
 	_ "github.com/jinzhu/gorm/dialects/postgres"
+
+	tokens "wordcount/internal/Middleware"
 )
 
 type Admin struct {
@@ -25,20 +25,23 @@ func Adminlogin(c *gin.Context) {
 	}
 
 	if admin.Email == "admin@gmail.com" && admin.Password == "12345" {
-		// Create a token
-		token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-			"Email": admin.Email,
-			"exp":   time.Now().Add(time.Hour * 24).Unix(),
-		})
 
-		tokenString, err := token.SignedString([]byte(SecretKey))
+		accessToken, err := tokens.GenerateAccessToken()
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Error signing the token"})
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal Server Error"})
 			return
 		}
+
+		refreshToken, err := tokens.GenerateRefreshToken()
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal Server Error"})
+			return
+		}
+
 		LogedUser.Adminemail = "admin@gmail.com"
 
-		c.JSON(http.StatusOK, gin.H{"token": tokenString, "email": LogedUser.Adminemail})
+		c.JSON(http.StatusOK, gin.H{"email": LogedUser.Adminemail, "access_token": accessToken,
+			"refresh_token": refreshToken})
 
 	} else {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})

@@ -2,16 +2,16 @@ package filemanipulate
 
 import (
 	"net/http"
-	"time"
 	dbconnect "wordcount/internal/db"
 
-	"github.com/dgrijalva/jwt-go"
 	"github.com/gin-gonic/gin"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/postgres"
+
+	tokens "wordcount/internal/Middleware"
 )
 
-const SecretKey = "Majid ali"
+// const SecretKey = "Majid ali"
 
 // User represents the structure of a user.
 type User struct {
@@ -90,20 +90,23 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	// Create a token
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"Email": user.Email,
-		"exp":   time.Now().Add(time.Hour * 24).Unix(),
-	})
-
-	tokenString, err := token.SignedString([]byte(SecretKey))
+	accessToken, err := tokens.GenerateAccessToken()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Error signing the token"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal Server Error"})
 		return
 	}
+
+	refreshToken, err := tokens.GenerateRefreshToken()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal Server Error"})
+		return
+	}
+
+
 
 	LogedUser.LoggedUserID = dbUser.ID
 
 	// Respond with user ID and token
-	c.JSON(http.StatusOK, gin.H{"user_id": dbUser.ID, "token": tokenString})
+	c.JSON(http.StatusOK, gin.H{"user_id": dbUser.ID, "access_token": accessToken,
+		"refresh_token": refreshToken})
 }

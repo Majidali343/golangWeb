@@ -1,0 +1,547 @@
+openapi: 3.0.3
+
+info:
+  version: "1.0.0"
+  title: "File Processor API"
+  description: "Upload files to extract a concise summary"
+
+servers:
+  - url: "http://localhost:8080"
+
+
+paths:
+
+  /register:
+    post:
+      summary: "Create a new user"
+      tags:
+        - User
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                password:
+                  type: string
+      
+      responses:
+        "200":
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  message:
+                    type: "string"
+                    example: "User created successfully"
+        "400":
+          description: Username or password field empty
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  message:
+                    type: "string"
+                    example: "Username and password are required"
+
+        "409":
+          description: Conflict - User already exists
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  message:
+                    type: "string"
+                    example: "User already exists"
+        
+  
+  /login:
+    post:
+      summary: "Login a user"
+      tags:
+        - User
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                email:
+                  type: string
+                password:
+                  type: string
+      
+      responses:
+        "200":
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  message:
+                    type: "string"
+                    example: "User logged in successfully!"
+                  token:
+                    type: "string"
+                    example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3MDA5ODUwNTYsInJvbGUiOjAsInRpbWUiOjE3MDA5ODE0NTYsInVzZXIiOjB9.tfXrz-FBTO-NvA5XrxLF095cXDr0RdSh8aVHQA9j5gw"
+                
+        "400":
+          description: Username or password field empty
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  message:
+                    type: "string"
+                    example: "Username and password are required"
+                
+        "401":
+          description: Username or password incorrect
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  message:
+                    type: "string"
+                    example: "Invalid credentials. Please check your username and password."
+
+  
+  /upload:
+    post:
+
+      security:
+        - api_key: []
+
+      summary: "Upload a file to process"
+      tags:
+        - Process
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+                routines:
+                  type: integer
+      
+      responses:
+        "200":
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  routines:
+                    type: integer
+                    example: 2
+                  timeTaken:
+                    type: string
+                    example: "231.956µs"
+                  totalCounts:
+                    type: object
+                    properties:
+                      LineCount:
+                        type: integer
+                        example: 101
+                      WordsCount:
+                        type: integer
+                        example: 280
+                      VowelsCount:
+                        type: integer
+                        example: 1065
+                      PunctuationCount:
+                        type: integer
+                        example: 637
+  
+        "400":
+          description: No file uploaded
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  message:
+                    type: "string"
+                    example: "No file uploaded"
+        "401":
+          description: Invalid token
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  message:
+                    type: "string"
+                    example: "Invalid or expired token."
+                
+        "422":
+          description: Invalid routines field
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  message:
+                    type: "string"
+                    example: "Routines field is invalid"
+
+  /statistics:
+    post:
+      security:
+        - api_key: []
+      summary: "Find statistics for a file"
+      tags:
+        - Process
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                filename:
+                  type: string
+      
+      responses:
+        "200":
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Statistics'               
+               
+                
+
+        "401":
+          description: Invalid token
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  message:
+                    type: "string"
+                    example: "Invalid or expired token."
+
+        "404":
+          description: No result found
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  message:
+                    type: "string"
+                    example: "no processes found for the specified file and user"
+
+  /processes:
+    post:
+      security:
+        - api_key: []
+
+      summary: "Find processes for a user"
+      tags:
+        - Process
+      
+      responses:
+        "200":
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Processes'                                           
+                
+
+        "401":
+          description: Invalid token
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  message:
+                    type: "string"
+                    example: "Invalid or expired token."
+
+        "404":
+          description: No result found
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  message:
+                    type: "string"
+                    example: "no processes found for the specified user"
+
+
+  /admin/login:
+    post:
+      security:
+        - api_key: []
+      
+      summary: "Login an admin user"
+      tags:
+        - Admin
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+                password:
+                  type: string
+      
+      responses:
+        "200":
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  message:
+                    type: "string"
+                    example: "User logged in successfully!"
+                  token:
+                    type: "string"
+                    example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3MDA5ODUwNTYsInJvbGUiOjAsInRpbWUiOjE3MDA5ODE0NTYsInVzZXIiOjB9.tfXrz-FBTO-NvA5XrxLF095cXDr0RdSh8aVHQA9j5gw"
+                
+        "400":
+          description: Username or password field empty
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  message:
+                    type: "string"
+                    example: "Username and password are required"
+                
+        "401":
+          description: Username or password incorrect
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  message:
+                    type: "string"
+                    example: "Invalid credentials. Please check your username and password."
+
+
+  /admin/processes:
+    post:
+      security:
+        - api_key: []
+
+      summary: "Find processes for all users"
+      tags:
+        - Admin
+      
+      responses:
+        "200":
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Processes'               
+                                              
+                
+
+        "401":
+          description: Invalid token
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  message:
+                    type: "string"
+                    example: "Invalid or expired token."
+
+        "404":
+          description: No result found
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  message:
+                    type: "string"
+                    example: "no processes found"
+
+
+  /admin/statistics:
+    post:
+      security:
+        - api_key: []
+
+      summary: "Find statistics for a file"
+      tags:
+        - Admin
+      requestBody:
+        required: true
+        content:
+          application/x-www-form-urlencoded:
+            schema:
+              type: object
+              properties:
+                filename:
+                  type: string
+      
+      responses:
+        "200":
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Statistics'               
+                
+
+        "401":
+          description: Invalid token
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  message:
+                    type: "string"
+                    example: "Invalid or expired token."
+
+        "404":
+          description: No result found
+          content:
+            application/json:
+              schema:
+                type: "object"
+                properties:
+                  message:
+                    type: "string"
+                    example: "no processes found for the specified file"
+
+
+  /migrate:
+    get:
+      security:
+        - api_key: []
+      summary: "Migrate the database"
+      tags:
+        - Admin
+      responses:
+        200:
+          description: Successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Migration'
+
+components:
+
+  securitySchemes:
+    api_key:
+      type: apiKey
+      in: header
+      name: Authorization
+      
+  schemas:
+
+    Statistics:
+      type: object
+      properties:
+        averageTime:
+          type: number
+          example: 0.00031381000000000003
+        rowCount:
+          type: integer
+          example: 3  
+
+    Processes:
+      type: array
+      items:
+        type: object
+        properties:
+          ID:
+            type: integer
+          CreatedAt:
+            type: string
+            format: date-time
+          UpdatedAt:
+            type: string
+            format: date-time
+          DeletedAt:
+            type: string
+            format: date-time
+            nullable: true
+          Time:
+            type: integer
+          UserID:
+            type: integer
+          FileName:
+            type: string
+          Routines:
+            type: integer
+          ProcessData:
+            type: object
+            properties:
+              ID:
+                type: integer
+              CreatedAt:
+                type: string
+                format: date-time
+              UpdatedAt:
+                type: string
+                format: date-time
+              DeletedAt:
+                type: string
+                format: date-time
+                nullable: true
+              LineCount:
+                type: integer
+              WordsCount:
+                type: integer
+              VowelsCount:
+                type: integer
+              PunctuationCount:
+                type: integer
+              ProcessID:
+                type: integer
+
+  
+    Migration:
+      type: "object"
+      properties:
+        message:
+          type: "string"
+          example: "Migrations completed successfully"
+        
+    ErrorModel:
+      type: "object"
+      properties:
+        message:
+          type: "string"
+          example: "Error Message"
+        
+        
+        
+                                      # END FILE

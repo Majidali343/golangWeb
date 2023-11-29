@@ -6,11 +6,21 @@ import (
 
 	"github.com/gin-gonic/gin"
 	_ "github.com/jinzhu/gorm/dialects/postgres"
+
+     "github.com/gin-contrib/cors"
 )
 
 func main() {
 
 	router := SetupRouter()
+	config := cors.Config{
+		AllowOrigins:     []string{"https://editor.swagger.io"},
+		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE"},
+		AllowHeaders:     []string{"Authorization"},
+		AllowCredentials: true,
+	}
+
+	router.Use(cors.New(config))
 	router.Run(":8080")
 }
 

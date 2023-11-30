@@ -19,6 +19,10 @@ func main() {
 func SetupRouter() *gin.Engine {
 	r := gin.Default()
 
+	r.GET("/test", func(c *gin.Context) {
+		c.JSON(200, gin.H{"message": "hello"})
+	})
+
 	r.POST("/login", filemanipulateController.Login)
 	r.POST("/admin", filemanipulateController.Adminlogin)
 	r.POST("/register", filemanipulateController.Register)

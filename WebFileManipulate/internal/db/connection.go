@@ -13,10 +13,10 @@ func Dbconnection() *gorm.DB {
 	host := "localhost"
 	username := "postgres"
 	password := "Majid"
-	dbName := "filemanipulation"
+	dbName := "postgres"
 
 	// Construct the connection string
-	connectionString := fmt.Sprintf("host=%s user=%s dbname=%s password=%s",
+	connectionString := fmt.Sprintf("host=%s user=%s dbname=%s password=%s  host=postgres sslmode=disable",
 		host, username, dbName, password)
 
 	// Connect to PostgreSQL

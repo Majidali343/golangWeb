@@ -8,4 +8,15 @@ services:
       dockerfile: Dockerfile
     ports:
       - "8080:8080"
-   
+    depends_on:
+      - postgres
+    links:
+      - postgres
+
+
+  postgres:
+    image: postgres:latest
+    environment:
+       POSTGRES_USER: postgres
+       POSTGRES_PASSWORD: Majid
+       POSTGRES_DB: postgres

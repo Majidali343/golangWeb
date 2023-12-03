@@ -44,6 +44,7 @@ func Register(c *gin.Context) {
 	// Connect to the database
 	db := dbconnect.Dbconnection()
 	defer db.Close()
+	db.AutoMigrate(&User{})
 
 	var existingUser User
 	if err := db.Where("email = ?", user.Email).First(&existingUser).Error; err == nil {
@@ -101,8 +102,6 @@ func Login(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal Server Error"})
 		return
 	}
-
-
 
 	LogedUser.LoggedUserID = dbUser.ID
 

@@ -69,6 +69,10 @@ func Filemanupulate(c *gin.Context) {
 	})
 	///end of upload file feature
 
+	db := dbconnect.Dbconnection()
+	defer db.Close()
+	db.AutoMigrate(&Filestatic{})
+
 	startTime := time.Now()
 
 	data, err := filereader.ReadFile("../assets/" + filename)
@@ -107,17 +111,12 @@ func Filemanupulate(c *gin.Context) {
 	endTime := time.Now()
 	ElapsedTime = endTime.Sub(startTime).Milliseconds()
 
-	db := dbconnect.Dbconnection()
-	defer db.Close()
-
 	Logeduserdetail := LogedUser.LoggedUserID
 
 	var filestatic Filestatic
 	filestatic.UserID = Logeduserdetail
 	filestatic.Filename = filename
 	filestatic.Time = ElapsedTime
-
-	db.AutoMigrate(&Filestatic{})
 
 	if err := db.Create(&filestatic).Error; err != nil {
 		return
